@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>多項式除法教學計算器 | 李向宇老師製作</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    
+    <style>
+        :root {
+            --board-bg: #1a3c34;
+            --board-border: #5d4037;
+            --text-main: #f5f5f5;
+            --text-accent: #ffd54f;
+            --c-dividend: #ffab91;
+            --c-divisor: #80cbc4;
+            --c-quotient: #fff59d;
+            --c-remainder: #ef9a9a;
+            --c-op: #b0bec5;
+            --line-color: rgba(255,255,255,0.85);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+            background-color: #121212;
+            color: var(--text-main);
+            margin: 0; padding: 16px;
+            display: flex; justify-content: center;
+        }
+
+        .container {
+            width: 100%; max-width: 1100px;
+            background: var(--board-bg);
+            border: 8px solid var(--board-border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            position: relative;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--text-accent);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        h1 {
+            color: var(--text-accent);
+            margin: 0; font-size: 24px;
+        }
+
+        .author-tag {
+            background: rgba(255, 213, 79, 0.15);
+            border: 1px solid var(--text-accent);
+            color: var(--text-accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .input-panel {
+            background: rgba(0,0,0,0.25);
+            padding: 16px; border-radius: 8px; margin-bottom: 24px;
+        }
+        .input-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+        label { font-weight: bold; color: var(--text-accent); min-width: 110px; font-size: 15px; }
+        input[type="text"] {
+            flex: 1; min-width: 200px;
+            background: #264d42; border: 1px solid #4a7c68;
+            color: #fff; padding: 12px 14px; font-size: 16px;
+            border-radius: 6px; outline: none;
+        }
+        input:focus { border-color: var(--text-accent); }
+        .btn-calc {
+            background: #1976d2; color: white; border: none;
+            padding: 12px 28px; font-size: 16px; font-weight: bold;
+            border-radius: 6px; cursor: pointer; white-space: nowrap;
+        }
+        .btn-calc:active { transform: scale(0.97); }
+        .hint-text { font-size: 13px; color: #b0bec5; line-height: 1.6; margin-top: 4px; }
+        .error-msg { color: #ff8a80; font-weight: bold; margin-top: 8px; min-height: 20px; }
+
+        .results-wrapper { display: none; grid-template-columns: 1fr; gap: 24px; }
+        @media (min-width: 768px) {
+            .results-wrapper { grid-template-columns: 1fr 1fr; }
+            .full-width { grid-column: 1 / -1; }
+        }
+
+        .result-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px; padding: 16px;
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+        }
+        .card-title {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 18px; color: var(--text-accent);
+            margin-bottom: 16px; white-space: nowrap;
+        }
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 12px; font-weight: bold; color: #000; background: var(--text-accent);
+        }
+        .scroll-hint { text-align: right; font-size: 12px; color: #78909c; margin-top: 4px; display: none; }
+        @media (max-width: 767px) { .scroll-hint { display: block; } }
+
+        /* 數學表格樣式 */
+        .math-table { border-collapse: collapse; font-size: 19px; margin: 10px 0; }
+        .math-table td { padding: 6px 14px; text-align: right; white-space: nowrap; vertical-align: middle; }
+
+        .synth-table { border-collapse: collapse; font-size: 19px; }
+        .synth-table td { padding: 6px 14px; text-align: center; vertical-align: middle; }
+        
+        .border-top { border-top: 2px solid var(--line-color); }
+        .border-right { border-right: 2px solid var(--line-color); }
+        .border-bottom { border-bottom: 2px solid var(--line-color); }
+        .border-left { border-left: 2px solid var(--line-color); }
+        
+        .rem-box {
+            border-left: 2px solid var(--line-color);
+            border-bottom: 2px solid var(--line-color);
+            border-right: 2px solid var(--line-color);
+        }
+
+        .c-dividend { color: var(--c-dividend); font-weight: bold; }
+        .c-divisor { color: var(--c-divisor); font-weight: bold; }
+        .c-quotient { color: var(--c-quotient); font-weight: bold; }
+        .c-remainder { color: var(--c-remainder); font-weight: bold; }
+        .c-op { color: var(--c-op); }
+
+        .relation-box { margin-top: 16px; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,0.2); }
+        .katex-display { margin: 0 !important; }
+        .katex { color: inherit !important; font-size: 1.05em !important; }
+
+        .footer-credit {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #80cbc4;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-bar">
+        <h1>📐 多項式除法教學計算器</h1>
+        <div class="author-tag">👨‍🏫 李向宇老師製作</div>
+    </div>
+
+    <div class="input-panel">
+        <div class="input-row">
+            <label for="inp-f">被除式 f(x)</label>
+            <input type="text" id="inp-f" value="2, 7, 0, -14, -4" placeholder="係數以逗號分隔，降冪排列">
+        </div>
+        <div class="input-row">
+            <label for="inp-g">除式 g(x)</label>
+            <input type="text" id="inp-g" value="1, -2" placeholder="例：1, -2 代表 x-2">
+            <button class="btn-calc" onclick="App.run()">開始計算</button>
+        </div>
+        <div class="hint-text">
+            💡 <strong>輸入規則：</strong>僅需輸入係數（支援整數與小數/分數），缺項請補 0。例：<code>2, 7, 0, -14, -4</code>
+        </div>
+        <div id="msg-error" class="error-msg" role="alert"></div>
+    </div>
+
+    <div id="results" class="results-wrapper">
+        <div class="result-card full-width">
+            <div class="card-title"><span class="badge">方法一</span> 長除法 (帶未知數 x - 統一數學字型)</div>
+            <div class="scroll-hint">👉 左右滑動查看完整算式</div>
+            <div id="disp-long"></div>
+        </div>
+        <div class="result-card">
+            <div class="card-title"><span class="badge">方法二</span> 分離係數法</div>
+            <div class="scroll-hint">👉 左右滑動</div>
+            <div id="disp-coef"></div>
+        </div>
+        <div class="result-card">
+            <div class="card-title"><span class="badge">方法三</span> 綜合除法 (台灣教材標準格式)</div>
+            <div id="synth-warn" style="color:#ffb74d; font-size:13px; margin-bottom:8px;"></div>
+            <div class="scroll-hint">👉 左右滑動</div>
+            <div id="disp-synth"></div>
+        </div>
+        <div class="result-card full-width">
+            <div class="card-title"><span class="badge">驗證</span> 除法原理</div>
+            <div id="disp-relation" class="relation-box"></div>
+        </div>
+    </div>
+
+    <div class="footer-credit">
+        本教學工具由 <strong>李向宇老師</strong> 設計與製作 ｜ 適用高中數學多項式單元教學
+    </div>
+</div>
+
+<script>
+const App = (() => {
+    const MathCore = {
+        // 將任意浮點數精確轉換為最簡分數 { num: 分子, den: 分母 }
+        toFraction(val) {
+            if (Math.abs(val) < 1e-10) return { num: 0, den: 1 };
+            const sign = val < 0 ? -1 : 1;
+            let absVal = Math.abs(val);
+            if (Math.abs(absVal - Math.round(absVal)) < 1e-7) {
+                return { num: sign * Math.round(absVal), den: 1 };
+            }
+            // 連分數演算法求最簡分數
+            let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
+            let b = absVal;
+            for (let i = 0; i < 25; i++) {
+                let a = Math.floor(b);
+                let aux = h1; h1 = a * h1 + h2; h2 = aux;
+                aux = k1; k1 = a * k1 + k2; k2 = aux;
+                if (Math.abs(absVal - h1 / k1) < 1e-7) break;
+                if (Math.abs(b - a) < 1e-7) break;
+                b = 1 / (b - a);
+            }
+            return { num: sign * h1, den: k1 };
+        },
+
+        // 將數字轉為 LaTeX 分數格式
+        toFracLatex(val, showPlus = false) {
+            const f = this.toFraction(val);
+            if (f.num === 0) return '0';
+            const absN = Math.abs(f.num);
+            const signStr = f.num < 0 ? '-' : (showPlus ? '+' : '');
+            if (f.den === 1) {
+                return `${signStr}${absN}`;
+            }
+            return `${signStr}\\frac{${absN}}{${f.den}}`;
+        },
+
+        parse(str) {
+            if (!str?.trim()) return null;
+            const nums = str.split(',').map(s => parseFloat(s.trim()));
+            if (nums.some(isNaN)) return null;
+            while (nums.length > 1 && Math.abs(nums[0]) < 1e-10) nums.shift();
+            return nums;
+        },
+
+        divide(A, B) {
+            let R = [...A];
+            const Q = [], steps = [];
+            if (A.length < B.length) return { quotient: [0], remainder: [...A], steps: [] };
+
+            while (R.length >= B.length) {
+                const lead = R[0] / B[0];
+                Q.push(lead);
+                const sub = B.map(c => c * lead);
+                steps.push({ qTerm: lead, subPoly: sub, currentR: [...R] });
+                for (let i = 0; i < B.length; i++) R[i] -= sub[i];
+                R.shift();
+                while (R.length > 1 && Math.abs(R[0]) < 1e-10) R.shift();
+            }
+
+            const clean = arr => arr.map(v => Math.abs(v) < 1e-10 ? 0 : v);
+            return { quotient: clean(Q.length ? Q : [0]), remainder: clean(R.length ? R : [0]), steps };
+        },
+
+        toPolyLatex(coeffs, v = 'x') {
+            if (!coeffs?.length) return '0';
+            const deg = coeffs.length - 1;
+            let parts = [];
+            for (let i = 0; i <= deg; i++) {
+                const c = coeffs[i], p = deg - i;
+                if (Math.abs(c) < 1e-10) continue;
+                const termStr = this.toTermLatex(c, p, parts.length === 0, v);
+                if (termStr) parts.push(termStr);
+            }
+            return parts.join('') || '0';
+        },
+
+        toTermLatex(c, deg, isLeading = false, v = 'x') {
+            if (Math.abs(c) < 1e-10) return '';
+            const f = this.toFraction(c);
+            const absN = Math.abs(f.num);
+            const den = f.den;
+            let sign = isLeading ? (f.num < 0 ? '-' : '') : (f.num >= 0 ? '+' : '-');
+            let varStr = deg > 1 ? `${v}^{${deg}}` : (deg === 1 ? v : '');
+
+            if (deg === 0) {
+                if (den === 1) return `${sign}${absN}`;
+                return `${sign}\\frac{${absN}}{${den}}`;
+            } else {
+                if (den === 1) {
+                    let coefStr = absN === 1 ? '' : absN.toString();
+                    return `${sign}${coefStr}${varStr}`;
+                } else {
+                    return `${sign}\\frac{${absN}}{${den}}${varStr}`;
+                }
+            }
+        }
+    };
+
+    const Render = {
+        _renderKatex(el, latex, displayMode = false) {
+            try { katex.render(latex, el, { throwOnError: false, displayMode }); } catch(e) { el.textContent = latex; }
+        },
+
+        longDivision(container, A, B, res) {
+            const degA = A.length - 1;
+            const degB = B.length - 1;
+            const Q = res.quotient;
+            
+            let html = '<table class="math-table"><tr><td></td>';
+            for (let i = 0; i <= degA; i++) {
+                const curDeg = degA - i;
+                const qTermIndex = (degA - degB) - curDeg;
+                if (qTermIndex >= 0 && qTermIndex < Q.length) {
+                    const val = Q[qTermIndex];
+                    const termStr = MathCore.toTermLatex(val, curDeg, qTermIndex === 0);
+                    html += `<td class="c-quotient" data-latex="${termStr}"></td>`;
+                } else {
+                    html += '<td></td>';
+                }
+            }
+            html += '</tr><tr>';
+            html += `<td class="c-divisor border-right" data-latex="${MathCore.toPolyLatex(B)}\\big)"></td>`;
+            for (let i = 0; i <= degA; i++) {
+                const deg = degA - i;
+                const termStr = MathCore.toTermLatex(A[i], deg, i === 0);
+                html += `<td class="c-dividend border-top" data-latex="${termStr}"></td>`;
+            }
+            html += '</tr>';
+
+            res.steps.forEach((step, s) => {
+                const subPoly = step.subPoly;
+                const startCol = s;
+
+                html += '<tr><td></td>';
+                for (let i = 0; i < degA + 1; i++) {
+                    const subIdx = i - startCol;
+                    if (subIdx >= 0 && subIdx < subPoly.length) {
+                        const deg = degA - i;
+                        const termStr = MathCore.toTermLatex(subPoly[subIdx], deg, subIdx === 0);
+                        html += `<td class="c-op" data-latex="${termStr}"></td>`;
+                    } else {
+                        html += '<td></td>';
+                    }
+                }
+                html += '</tr><tr><td></td>';
+
+                const nextR = (s < res.steps.length - 1) ? res.steps[s+1].currentR : res.remainder;
+                const isLast = (s === res.steps.length - 1);
+                const rStartCol = (degA + 1) - nextR.length;
+
+                for (let i = 0; i < degA + 1; i++) {
+                    const rIdx = i - rStartCol;
+                    if (rIdx >= 0 && rIdx < nextR.length) {
+                        const deg = degA - i;
+                        const termStr = MathCore.toTermLatex(nextR[rIdx], deg, rIdx === 0);
+                        const cls = isLast ? 'c-remainder border-top' : 'c-dividend border-top';
+                        html += `<td class="${cls}" data-latex="${termStr}"></td>`;
+                    } else {
+                        html += '<td></td>';
+                    }
+                }
+                html += '</tr>';
+            });
+
+            html += '</table>';
+            container.innerHTML = html;
+            
+            container.querySelectorAll('td[data-latex]').forEach(td => {
+                const latex = td.getAttribute('data-latex');
+                if (latex) this._renderKatex(td, latex);
+            });
+        },
+
+        coefDivision(container, A, B, res) {
+            const Q = res.quotient;
+            const lenA = A.length;
+            
+            let html = '<table class="math-table"><tr><td></td>';
+            for (let i = 0; i < lenA; i++) {
+                const qIdx = i - (lenA - Q.length);
+                const latex = qIdx >= 0 ? MathCore.toFracLatex(Q[qIdx]) : '';
+                html += `<td class="c-quotient" data-latex="${latex}"></td>`;
+            }
+            html += '</tr><tr>';
+            const divisorStr = B.map(v => MathCore.toFracLatex(v)).join('\\quad ') + '\\quad )';
+            html += `<td class="c-divisor border-right" data-latex="${divisorStr}"></td>`;
+            A.forEach(c => html += `<td class="c-dividend border-top" data-latex="${MathCore.toFracLatex(c)}"></td>`);
+            html += '</tr>';
+
+            res.steps.forEach((step, s) => {
+                const startCol = s;
+
+                html += '<tr><td></td>';
+                for (let i = 0; i < lenA; i++) {
+                    const subIdx = i - startCol;
+                    if (subIdx >= 0 && subIdx < step.subPoly.length) {
+                        html += `<td class="c-op" data-latex="${MathCore.toFracLatex(step.subPoly[subIdx])}"></td>`;
+                    } else {
+                        html += '<td></td>';
+                    }
+                }
+                html += '</tr><tr><td></td>';
+
+                const nextR = (s < res.steps.length - 1) ? res.steps[s+1].currentR : res.remainder;
+                const isLast = (s === res.steps.length - 1);
+                const rStartCol = lenA - nextR.length;
+
+                for (let i = 0; i < lenA; i++) {
+                    const rIdx = i - rStartCol;
+                    if (rIdx >= 0 && rIdx < nextR.length) {
+                        const cls = isLast ? 'c-remainder border-top' : 'c-dividend border-top';
+                        html += `<td class="${cls}" data-latex="${MathCore.toFracLatex(nextR[rIdx])}"></td>`;
+                    } else {
+                        html += '<td></td>';
+                    }
+                }
+                html += '</tr>';
+            });
+
+            html += '</table>';
+            container.innerHTML = html;
+
+            container.querySelectorAll('td[data-latex]').forEach(td => {
+                const latex = td.getAttribute('data-latex');
+                if (latex) this._renderKatex(td, latex);
+            });
+        },
+
+        synthetic(container, warnEl, A, B, res) {
+            if (B.length !== 2) {
+                warnEl.textContent = '⚠️ 綜合除法僅適用於一次除式 (ax + b)。';
+                container.innerHTML = '<div style="padding:10px;color:#aaa;">本題不適用綜合除法</div>';
+                return;
+            }
+            
+            const a = B[0], b = B[1], c = -b / a;
+            warnEl.textContent = Math.abs(a - 1) > 1e-10 
+                ? `💡 注意：除式首項係數 a = ${MathCore.toFracLatex(a)}，底列商式係數需再除以 ${MathCore.toFracLatex(a)}` 
+                : '';
+            
+            let row2 = [0], row3 = [A[0]];
+            for (let i = 1; i < A.length; i++) {
+                const m = row3[i-1] * c;
+                row2.push(m);
+                row3.push(A[i] + m);
+            }
+            
+            let html = '<table class="synth-table"><tr>';
+            A.forEach((v, idx) => {
+                const isLast = idx === A.length - 1;
+                const cls = isLast ? 'c-dividend border-right' : 'c-dividend';
+                html += `<td class="${cls}" data-latex="${MathCore.toFracLatex(v, idx > 0)}"></td>`;
+            });
+            html += `<td class="c-divisor" data-latex="${MathCore.toFracLatex(c)}"></td></tr><tr>`;
+
+            row2.forEach((val, idx) => {
+                const isLast = idx === row2.length - 1;
+                const cls = isLast ? 'c-op border-right' : 'c-op';
+                const latex = idx === 0 ? '' : MathCore.toFracLatex(val, true);
+                html += `<td class="${cls}" data-latex="${latex}"></td>`;
+            });
+            html += `<td></td></tr><tr>`;
+
+            row3.forEach((v, idx) => {
+                const isLast = idx === row3.length - 1;
+                if (!isLast) {
+                    html += `<td class="c-quotient border-top" data-latex="${MathCore.toFracLatex(v, idx > 0)}"></td>`;
+                } else {
+                    html += `<td class="c-remainder border-top rem-box" data-latex="${MathCore.toFracLatex(v)}"></td>`;
+                }
+            });
+            html += `<td></td></tr></table>`;
+            
+            const rawQ = row3.slice(0, -1);
+            const finalQ = rawQ.map(v => v / a);
+            const remLatex = MathCore.toFracLatex(row3[row3.length - 1]);
+            
+            html += `<div style="margin-top:16px;font-size:15px;line-height:1.8">`;
+            if (Math.abs(a - 1) > 1e-10) {
+                html += `綜合除法底列：<span id="synth-rawq-latex"></span><br>`;
+                html += `調整後商式 (÷${MathCore.toFracLatex(a)})：<span id="synth-q-latex"></span><br>`;
+            } else {
+                html += `商式為：<span id="synth-q-latex"></span><br>`;
+            }
+            html += `餘式為：<span id="synth-r-latex" class="c-remainder"></span></div>`;
+            
+            container.innerHTML = html;
+
+            container.querySelectorAll('td[data-latex]').forEach(td => {
+                const latex = td.getAttribute('data-latex');
+                if (latex) this._renderKatex(td, latex);
+            });
+
+            if (Math.abs(a - 1) > 1e-10) {
+                const rawQStr = rawQ.map((v, i) => MathCore.toFracLatex(v, i > 0)).join(', ');
+                this._renderKatex(document.getElementById('synth-rawq-latex'), `[${rawQStr}]`);
+            }
+            this._renderKatex(document.getElementById('synth-q-latex'), MathCore.toPolyLatex(finalQ));
+            this._renderKatex(document.getElementById('synth-r-latex'), remLatex);
+        },
+
+        relation(container, f, g, q, r) {
+            const latex = `${MathCore.toPolyLatex(f)} = \\underbrace{(${MathCore.toPolyLatex(g)})}_{\\text{除式}} \\cdot \\underbrace{(${MathCore.toPolyLatex(q)})}_{\\text{商式}} + \\underbrace{${MathCore.toPolyLatex(r)}}_{\\text{餘式}}`;
+            container.innerHTML = `
+                <div style="margin-bottom:8px;color:var(--text-accent);font-weight:bold">除法原理驗證：</div>
+                <div id="rel-latex"></div>
+                <div style="margin-top:8px;font-size:13px;color:#90a4ae">其中 deg(餘式) < deg(除式) 或 餘式 = 0</div>
+            `;
+            this._renderKatex(document.getElementById('rel-latex'), latex, true);
+        }
+    };
+
+    function run() {
+        const errEl = document.getElementById('msg-error');
+        const resEl = document.getElementById('results');
+        errEl.textContent = '';
+        resEl.style.display = 'none';
+
+        const f = MathCore.parse(document.getElementById('inp-f').value);
+        const g = MathCore.parse(document.getElementById('inp-g').value);
+
+        if (!f || !g) { errEl.textContent = '❌ 輸入格式錯誤，請確認係數以逗號分隔且皆為數字。'; return; }
+        if (g.length === 1 && Math.abs(g[0]) < 1e-10) { errEl.textContent = '❌ 除式不能為零多項式！'; return; }
+
+        const res = MathCore.divide(f, g);
+
+        Render.longDivision(document.getElementById('disp-long'), f, g, res);
+        Render.coefDivision(document.getElementById('disp-coef'), f, g, res);
+        Render.synthetic(document.getElementById('disp-synth'), document.getElementById('synth-warn'), f, g, res);
+        Render.relation(document.getElementById('disp-relation'), f, g, res.quotient, res.remainder);
+
+        resEl.style.display = 'grid';
+    }
+
+    document.addEventListener('DOMContentLoaded', run);
+    return { run };
+})();
+</script>
+</body>
+</html>
